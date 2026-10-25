@@ -1,0 +1,38 @@
+{
+  "$schema": "../schema/dashboard.schema.json",
+  "id": "demo-sensor",
+  "name": "Demo: CSV sensor board",
+  "description": "A board printing `temp,hum,vbat,fan` as CSV at 10 Hz. Run it in Demo mode or flash firmware/arduino/csv_sensor.",
+  "source": {
+    "baudRate": 115200,
+    "framing": { "mode": "delimiter", "delimiter": "\\n" },
+    "parser": { "type": "csv", "separator": ",", "fields": ["temp", "hum", "vbat", "fan"] },
+    "simulate": {
+      "intervalMs": 100,
+      "format": "csv",
+      "signals": [
+        { "name": "temp", "waveform": "sine", "min": 18, "max": 92, "periodMs": 20000, "decimals": 1 },
+        { "name": "hum", "waveform": "triangle", "min": 30, "max": 70, "periodMs": 15000, "decimals": 0 },
+        { "name": "vbat", "waveform": "sawtooth", "min": 3.3, "max": 4.2, "periodMs": 60000, "decimals": 2 },
+        { "name": "fan", "waveform": "square", "min": 0, "max": 1, "periodMs": 8000, "decimals": 0 }
+      ]
+    }
+  },
+  "signals": {
+    "temp": { "label": "Temperature", "unit": "°C", "decimals": 1, "color": "#f97316" },
+    "hum": { "label": "Humidity", "unit": "%", "decimals": 0, "color": "#38bdf8" },
+    "vbat": { "label": "Battery", "unit": "V", "decimals": 2, "color": "#a3e635" },
+    "fan": { "label": "Fan", "decimals": 0, "color": "#e879f9" }
+  },
+  "widgets": [
+    { "type": "gauge", "signal": "temp", "min": 0, "max": 100, "thresholds": [{ "value": 60, "color": "#eab308" }, { "value": 80, "color": "#ef4444" }], "w": 3, "h": 2 },
+    { "type": "value", "signal": "hum", "w": 3, "h": 1 },
+    { "type": "value", "signal": "vbat", "thresholds": [{ "value": 0, "color": "#ef4444" }, { "value": 3.6, "color": "#a3e635" }], "w": 3, "h": 1 },
+    { "type": "led", "signal": "fan", "title": "Fan running", "onLabel": "RUNNING", "offLabel": "STOPPED", "w": 3, "h": 1 },
+    { "type": "button", "title": "Commands", "actions": [{ "label": "Fan ON", "send": "fan 1" }, { "label": "Fan OFF", "send": "fan 0" }, { "label": "Status", "send": "status" }], "w": 6, "h": 1 },
+    { "type": "plot", "title": "Temperature & humidity", "signals": ["temp", "hum"], "w": 8, "h": 3 },
+    { "type": "table", "w": 4, "h": 3 },
+    { "type": "terminal", "w": 12, "h": 4 }
+  ],
+  "options": { "timeWindowSec": 30 }
+}

@@ -1,0 +1,4 @@
+I (1234) main: boot ok
+I (1300) sensor: T=23.5C H=41% V=3.70
+W (1400) wifi: retry
+I (1500) sensor: T=23.7C H=42% V=3.69

@@ -1,0 +1,58 @@
+{
+  "name": "webserial-dash",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Agent-extensible Web Serial debug terminal and data-log dashboard",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@10.34.8",
+  "scripts": {
+    "dev": "vite",
+    "build": "pnpm gen:schema && tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "gen:schema": "tsx --tsconfig tsconfig.node.json scripts/gen-schema.ts",
+    "validate:dashboards": "tsx --tsconfig tsconfig.node.json scripts/validate-dashboards.ts",
+    "new:widget": "tsx --tsconfig tsconfig.node.json scripts/new-widget.ts",
+    "new:parser": "tsx --tsconfig tsconfig.node.json scripts/new-parser.ts",
+    "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm validate:dashboards"
+  },
+  "dependencies": {
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "uplot": "^1.6.32",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@playwright/test": "^1.50.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/w3c-web-serial": "^1.0.9",
+    "@vitejs/plugin-react": "^6.0.0",
+    "eslint": "^9.0.0",
+    "eslint-plugin-react-hooks": "^7.0.0",
+    "globals": "^16.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "~5.9.0",
+    "typescript-eslint": "^8.0.0",
+    "vite": "^8.0.0",
+    "vite-plugin-pwa": "^2.0.0",
+    "vitest": "^5.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

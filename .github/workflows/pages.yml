@@ -1,0 +1,56 @@
+# Deploys the production build to GitHub Pages.
+#
+# One-time setup in the repository: Settings -> Pages -> Build and deployment ->
+# Source = "GitHub Actions". Without that, the deploy job fails with a 404 on the
+# Pages API. The site is then served at https://<owner>.github.io/<repo>/.
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one deployment at a time; let in-flight deploys finish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # On Pages the app lives under /<repo>/; vite.config.ts reads BASE_PATH
+      # (trailing slash required) to set Vite's `base` and the PWA scope.
+      - run: pnpm install --frozen-lockfile && pnpm build
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

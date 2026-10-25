@@ -1,0 +1,26 @@
+{
+  "$schema": "../schema/dashboard.schema.json",
+  "id": "teleplot",
+  "name": "Teleplot protocol",
+  "description": "Any firmware printing Teleplot lines (`>name:value`). Signals are discovered automatically; this dashboard shows them all.",
+  "source": {
+    "baudRate": 115200,
+    "parser": { "type": "teleplot" },
+    "simulate": {
+      "intervalMs": 50,
+      "format": "teleplot",
+      "signals": [
+        { "name": "sin", "waveform": "sine", "min": -1, "max": 1, "periodMs": 3000, "decimals": 3 },
+        { "name": "saw", "waveform": "sawtooth", "min": 0, "max": 10, "periodMs": 5000, "decimals": 2 },
+        { "name": "noise", "waveform": "noise", "min": -0.2, "max": 0.2, "periodMs": 0, "decimals": 3 }
+      ]
+    }
+  },
+  "signals": {},
+  "widgets": [
+    { "type": "plot", "title": "All signals", "signals": ["sin", "saw", "noise"], "w": 12, "h": 4 },
+    { "type": "table", "w": 6, "h": 3 },
+    { "type": "log", "w": 6, "h": 3 }
+  ],
+  "options": { "timeWindowSec": 15 }
+}

@@ -1,0 +1,14 @@
+---
+description: WebSerial Dash conventions — config-first dashboards, DOM-free core, dual widget registries, pnpm check gate
+globs: ["src/**", "dashboards/**"]
+alwaysApply: true
+---
+
+Read AGENTS.md first; it is the canonical instruction file for this repo.
+
+1. Customise through `dashboards/*.json` (validated by `src/config/schema.ts`). Write code only for a new widget kind or parser kind. Never hand-edit `schema/dashboard.schema.json`; run `pnpm gen:schema`.
+2. `pnpm check` (typecheck + lint + unit tests + `validate:dashboards`) must pass before you finish.
+3. New widget: `pnpm new:widget <type>`, then register in BOTH `src/widgets/schemas.ts` and `src/widgets/registry.tsx`. New parser: `pnpm new:parser <type>`, register in `src/core/parsers/registry.ts`, add a fixture under `tests/fixtures/` and a table test.
+4. `src/core/**` and every `schema.ts` stay DOM-free and React-free (Node scripts and Vitest in `environment: 'node'` import them). No `any`; `import type` for types; every Zod field gets `.describe()` and its default in the schema (`.prefault({})` for object defaults).
+5. Every dashboard needs `source.simulate` (format matching the parser, or `lines`) so `?dashboard=<id>&demo` works without hardware; verify in Demo mode before touching real serial ports.
+6. Widgets read `ctx.session.store` on their own schedule (`useLatest`/`useTick`/rAF), use `ctx.format/label/color`, CSS classes `w-<type>` in `src/app/styles.css`, and expose a `data-testid` for Playwright.

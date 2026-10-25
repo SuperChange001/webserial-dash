@@ -1,0 +1,36 @@
+{
+  "$schema": "../schema/dashboard.schema.json",
+  "id": "esp-log",
+  "name": "ESP-IDF log mining",
+  "description": "Pulls numbers out of free-form ESP-IDF style log lines with a regex while still showing the raw terminal.",
+  "source": {
+    "baudRate": 115200,
+    "parser": { "type": "regex", "pattern": "T=(?<temp>[-\\d.]+)C H=(?<hum>\\d+)% V=(?<vbat>[\\d.]+)" },
+    "simulate": {
+      "intervalMs": 500,
+      "format": "csv",
+      "lines": [
+        "I (1234) main: boot ok",
+        "I (1300) sensor: T=23.5C H=41% V=3.70",
+        "W (1400) wifi: retry 1",
+        "I (1500) sensor: T=23.9C H=42% V=3.69",
+        "I (1600) sensor: T=24.4C H=42% V=3.69",
+        "E (1700) mqtt: publish failed",
+        "I (1800) sensor: T=24.1C H=43% V=3.68"
+      ]
+    }
+  },
+  "signals": {
+    "temp": { "label": "Temperature", "unit": "°C", "decimals": 1 },
+    "hum": { "label": "Humidity", "unit": "%", "decimals": 0 },
+    "vbat": { "label": "VBAT", "unit": "V", "decimals": 2 }
+  },
+  "widgets": [
+    { "type": "value", "signal": "temp", "w": 4, "h": 1 },
+    { "type": "value", "signal": "hum", "w": 4, "h": 1 },
+    { "type": "value", "signal": "vbat", "w": 4, "h": 1 },
+    { "type": "plot", "signals": ["temp"], "w": 6, "h": 3 },
+    { "type": "log", "title": "Warnings & errors", "filter": "^[WE] ", "w": 6, "h": 3 },
+    { "type": "terminal", "w": 12, "h": 4 }
+  ]
+}

@@ -1,0 +1,9 @@
+coverage/
+dev-dist/
+dist/
+.DS_Store
+.env*
+*.log
+node_modules/
+playwright-report/
+test-results/

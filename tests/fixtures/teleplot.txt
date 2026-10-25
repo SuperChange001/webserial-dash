@@ -1,0 +1,5 @@
+>temp:23.5
+>temp:1700000000000:23.6§°C
+>acc:1;2;3
+>text:hello|t
+noise line

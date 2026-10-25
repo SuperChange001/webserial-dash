@@ -41,12 +41,14 @@ Touch `src/` only to add a new **widget kind** or **parser kind** (or fix a bug)
 
 ## How to add a dashboard
 
-1. Copy the closest example (`dashboards/demo-sensor.json` = CSV, `esp-log.json` = regex over logs, `teleplot.json` = Teleplot).
+1. Copy the closest example: `quickstart.json` = kv, no widgets (auto layout); `wifi-speedtest.json` = kv + device ticks + gauges with min/max + per-test history + local/remote buttons + scripted demo replies; `demo-sensor.json` = CSV; `esp-log.json` = regex over logs; `teleplot.json` = Teleplot. Full worked example with prompts and diffs: `docs/CUSTOMIZE.md`.
+   **When you write or suggest firmware, default to `kv` lines plus a tick counter** (`ticks=%lu temp=%.1f\n` with `millis()`) and add `source.timestamp`. Use CSV-with-`fields`, regex or binary only for firmware the user cannot change or for very high rates.
 2. Set a unique `id` (`^[a-z0-9-]+$`); the file must be named `<id>.json`.
 3. Pick `source.framing` (default: newline-delimited, CR stripped) and `source.parser` (`csv`, `kv`, `json`, `teleplot`, `regex`, `binary`).
 4. Fill `source.simulate` so Demo mode and `?demo` work without hardware: `format` must match the parser (`csv`/`kv`/`json`/`teleplot`) or use `lines` to replay literal output (regex, log-style devices). Binary parsers cannot be simulated.
 5. Add `signals` metadata (label, unit, decimals, scale/offset, color) and `widgets`.
-6. `pnpm validate:dashboards`, then `pnpm dev` and open `/?dashboard=<id>&demo`. Only then connect real hardware.
+6. Buttons: `send` talks to the device; `local` (`clearData`, `resetDevice`, `recordStart`, `recordStop`) is handled by the page. If the device answers commands, add `simulate.responses` so Demo mode answers too.
+7. `pnpm validate:dashboards`, then `pnpm dev` and open `/?dashboard=<id>&demo`. Only then connect real hardware.
 Full reference: `docs/CONFIG.md`. Line formats and firmware snippets: `docs/PROTOCOLS.md`.
 
 ## How to add a widget

@@ -9,6 +9,7 @@ Everything here is a JSON edit under `dashboards/`. Do not touch `src/` unless t
 
 ## Procedure
 
+0. **If you are also writing the firmware**, make it print `kv` lines with a tick counter (`ticks=<millis> name=value ...`) and set `source.timestamp: { "field": "ticks" }`. Names then live only in firmware; a dashboard with `"widgets": []` lays itself out automatically. See `dashboards/quickstart.json` and `dashboards/wifi-speedtest.json`; `docs/CUSTOMIZE.md` shows a full prompt → JSON → result walkthrough.
 1. **Get the line format.** Ask for (or infer from the request / firmware source) one or two literal lines the device prints, the rate, the baud rate (default 115200) and the line ending (default `\n`; CRLF is also handled by the default framer).
 2. **Pick the parser** (`source.parser.type`):
    | Device prints | Parser | Notes |
@@ -24,7 +25,9 @@ Everything here is a JSON edit under `dashboards/`. Do not touch `src/` unless t
 5. **Widgets**: one entry per visual. `signal`/`signals` must be names the parser emits. Use `thresholds` for colour steps (highest step `<=` value wins; below the first step the signal colour is used). Grid is 12 columns, `w` x `h` spans, rows ≈ 90 px. Put a `terminal` (w 12) at the bottom unless the user says otherwise.
 6. **Validate**: `pnpm validate:dashboards` (fix every ✖ and look at every ⚠: undeclared signal names usually mean a typo).
 7. **Tell the user how to verify**: `pnpm dev`, open `http://localhost:5173/?dashboard=<id>&demo` (auto-starts the simulated device), check each widget moves. Then plug in the board, select the dashboard, click **Connect**, pick the port. Close other programs holding the port (Arduino IDE Serial Monitor, minicom, PlatformIO monitor).
-8. If the user's board accepts commands, add a `button` widget with `actions` (`send` text + `lineEnding`).
+8. If the user's board accepts commands, add a `button` widget with `actions` (`send` text + `lineEnding`). Page-side actions use `local`: `clearData` ("clean data", "reset plots"), `resetDevice`, `recordStart`, `recordStop`; add `confirm` for destructive ones. Add `simulate.responses` (`{"cmd": ["reply {{rand:1:9:1}}"]}`) so the buttons do something in Demo mode.
+9. Useful options people ask for: `gauge.showMinMax` ("show min and max"), `plot.xAxis: "index"` ("one point per measurement/test", history of occasional events), `plot.yMin/yMax` (fixed axis), `signals.<name>.scale` (unit conversion), `log.filter` (only some lines).
+10. Editing an existing dashboard: keep `id`, `source` and `signals` unchanged when only the view changes, so a re-import keeps the data already on screen. Users without the repo load the edited file with **Import JSON**.
 
 ## Worked example
 

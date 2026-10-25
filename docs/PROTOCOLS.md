@@ -2,7 +2,53 @@
 
 What each parser expects on the wire, with matching firmware snippets. Parsers live in `src/core/parsers/<type>/index.ts`; config keys and defaults are in `docs/CONFIG.md`. Fixtures used by the tests are in `tests/fixtures/`.
 
-General rules:
+## Choosing a format
+
+**Recommended for new firmware: `kv` lines with a tick counter**, for example
+
+```c
+Serial.printf("ticks=%lu temp=%.1f hum=%d\n", millis(), t, h);
+```
+
+The firmware is then the only place that names signals. Add a value to the print and it shows up
+on the dashboard; a dashboard without widgets builds tiles and plots for every name automatically
+(`?dashboard=quickstart`, firmware in `firmware/arduino/quickstart_kv`).
+
+| Format | Board prints | Where names come from | Use when |
+|---|---|---|---|
+| `kv` | `temp=21.5 hum=40` | firmware | default choice; readable in any terminal |
+| `teleplot` | `>temp:21.5` | firmware | firmware already uses Teleplot |
+| `json` | `{"temp":21.5,"imu":{"ax":0.1}}` | firmware | nested or structured data |
+| `csv` + `#` header | `# temp hum` once, then `21.5 40` | firmware (header line) | shorter lines; header must be printed after every reset |
+| `csv` + `fields` | `21.5,40` | dashboard JSON, by column position | existing firmware you cannot change; reordering columns silently mislabels data |
+| `regex` | `I (1300) sensor: T=21.5C` | dashboard JSON, named groups | mining existing log output |
+| `binary` | raw struct bytes | dashboard JSON, `fields` | very high rates where text is too slow |
+
+Text formats comfortably handle a few hundred lines per second at 115200 baud and a few
+thousand at 921600. Above that consider `binary`.
+
+## Device timestamps
+
+The firmware may always send a tick counter such as `ticks=<millis()>`; it costs a few bytes and
+the dashboard decides whether to use it:
+
+```json
+"source": { "parser": { "type": "kv" },
+            "timestamp": { "field": "ticks", "ticksPerSecond": 1000, "use": true } }
+```
+
+- `use: true` stamps every sample of that line with the device time. USB and the operating
+  system deliver serial data in bursts; device time keeps the real spacing between samples.
+- `use: false`, or no `timestamp` block, keeps the time the browser received the line. The
+  counter is still stored and exported like any other column.
+- Device time is anchored to the PC clock at the first line. A reboot or counter wrap
+  (ticks going backwards) re-anchors automatically; so does drift beyond `maxDriftMs`.
+- Use `ticksPerSecond: 1000000` for `micros()` or ESP-IDF `esp_timer_get_time()`.
+
+Other parsers can carry a timestamp too: `json` with `timeKey`, and Teleplot's `>name:ts:value`
+(epoch milliseconds).
+
+## General rules
 
 - Default framing is newline-delimited; `\r\n` works out of the box (the trailing `\r` is stripped). One frame = one parse call.
 - Parsers emit raw numbers; apply calibration with `signals.<name>.scale/offset` instead of in firmware.

@@ -2,7 +2,7 @@ import { Emitter } from '../emitter';
 import { encodeText } from '../bytes';
 import type { OpenOptions, OutputSignals, StatusEvent, Transport, TransportStatus } from './types';
 
-export type Waveform = 'sine' | 'square' | 'triangle' | 'sawtooth' | 'noise' | 'counter' | 'constant';
+export type Waveform = 'sine' | 'square' | 'triangle' | 'sawtooth' | 'noise' | 'counter' | 'constant' | 'millis';
 
 export interface SimulatedSignal {
   name: string;
@@ -29,6 +29,20 @@ export interface SimulateSpec {
   lines?: string[];
   /** When true, bytes written to the transport are echoed back as `echo: ...` lines. */
   echo: boolean;
+  /**
+   * Scripted replies: command line (trimmed) → lines to emit. Lines may contain
+   * `{{rand:min:max:decimals}}`, replaced by a random number each time.
+   */
+  responses?: Record<string, string[]>;
+}
+
+/** Expand `{{rand:min:max:decimals}}` placeholders. */
+export function expandTemplate(line: string, random: () => number = Math.random): string {
+  return line.replace(/\{\{rand:(-?[\d.]+):(-?[\d.]+)(?::(\d+))?\}\}/g, (_m, a: string, b: string, d?: string) => {
+    const lo = Number(a);
+    const hi = Number(b);
+    return (lo + (hi - lo) * random()).toFixed(d === undefined ? 0 : Number(d));
+  });
 }
 
 export function sampleWaveform(sig: SimulatedSignal, tMs: number, counter: number): number {
@@ -49,6 +63,8 @@ export function sampleWaveform(sig: SimulatedSignal, tMs: number, counter: numbe
       return sig.min + (counter % (span + 1));
     case 'constant':
       return sig.min;
+    case 'millis':
+      return sig.min + Math.floor(tMs);
   }
 }
 
@@ -131,9 +147,19 @@ export class SimulatedTransport implements Transport {
 
   async write(data: Uint8Array): Promise<void> {
     if (this._status !== 'open') throw new Error('Simulated transport is not open');
-    if (this.spec.echo) {
-      const text = new TextDecoder().decode(data).replace(/[\r\n]+$/, '');
-      this.data.emit(encodeText(`echo: ${text}${this.spec.lineEnding}`));
+    const text = new TextDecoder().decode(data);
+    for (const raw of text.split(/\r?\n|\r/)) {
+      const cmd = raw.trim();
+      if (!cmd) continue;
+      if (this.spec.echo) this.data.emit(encodeText(`echo: ${cmd}${this.spec.lineEnding}`));
+      const reply = this.spec.responses?.[cmd];
+      if (reply) {
+        // reply asynchronously, like a real device would
+        setTimeout(() => {
+          if (this._status !== 'open') return;
+          for (const line of reply) this.data.emit(encodeText(expandTemplate(line) + this.spec.lineEnding));
+        }, 300);
+      }
     }
   }
 

@@ -10,11 +10,12 @@ Conventions in this file: **bold** = required; everything else has the listed de
 |---|---|---|---|
 | `$schema` | string | – | Usually `"../schema/dashboard.schema.json"`. |
 | **`id`** | string `^[a-z0-9-]+$` | – | URL-safe; used in `?dashboard=<id>`, localStorage and export file names. File must be `dashboards/<id>.json`. |
-| **`name`** | string (min 1) | – | Shown in the dashboard picker (built-ins sorted by name). |
+| **`name`** | string (min 1) | – | Shown in the dashboard picker. |
+| `order` | number | `100` | Picker position, lower first; ties sort by name. |
 | `description` | string | – | Shown under the top bar (hidden on narrow screens). |
 | `source` | object | all defaults | Serial settings, framing, parser, simulate. See below. |
 | `signals` | record name → meta | `{}` | Presentation metadata; unlisted signals still work. |
-| `widgets` | array | `[]` | Empty → auto layout (plot of every discovered signal, table, log, terminal). |
+| `widgets` | array | `[]` | Empty → auto layout: a value tile and a plot per discovered signal (up to 12, tick counter excluded), a stats table and the terminal. New signals appear as they arrive. |
 | `options.bufferSamples` | int > 0 | `20000` | Samples kept per signal in memory (ring buffer). |
 | `options.timeWindowSec` | number > 0 | `30` | Default plot window. |
 | `options.columns` | int 1–24 | `12` | Grid columns on wide screens. |
@@ -32,6 +33,7 @@ Conventions in this file: **bold** = required; everything else has the listed de
 | `filters` | `[{ usbVendorId, usbProductId? }]` | `[]` | Restricts the port chooser to matching USB devices (decimal ints, e.g. `4292` = 0x10C4). |
 | `framing` | object | `{ "mode": "delimiter", "delimiter": "\\n", "maxLength": 4096 }` | See Framing. |
 | `parser` | object | `{ "type": "csv", "separator": ",", "fields": [], "header": true }` | See Parsers. |
+| `timestamp` | object | – | Optional device clock. See Device timestamp. |
 | `simulate` | object | – | Fake device for Demo mode / `?demo`. See Simulate. |
 
 ### Framing (`source.framing`)
@@ -55,6 +57,19 @@ All parsers emit `Sample { name, value, t }` with raw numbers; `signals.<name>.s
 | `regex` | **`pattern`** (JS regex with named groups), `flags` (`""`) | One signal per named group whose text is numeric. Without `g` only the first match counts. Backslashes must be doubled in JSON. |
 | `binary` | **`format`** (`^[<>]?[bBhHiIqQfdx]+$`), **`fields`** (names per non-pad code), `offset` (`0`) | From `fields`; missing → `f0`, `f1`…; `""` skips. `<` little-endian (default), `>` big. Frames shorter than `offset + struct size` are ignored. |
 
+### Device timestamp (`source.timestamp`)
+
+The firmware may send its own tick counter as an ordinary signal (e.g. `ticks=12345 temp=21.5`). This block decides what the dashboard does with it. Without the block the counter is just another signal.
+
+| Key | Type | Default | Notes |
+|---|---|---|---|
+| `field` | string | **required** | Signal carrying the counter, e.g. `"ticks"`. |
+| `ticksPerSecond` | number > 0 | `1000` | `1000` for `millis()`, `1000000` for `micros()` / `esp_timer_get_time()`. |
+| `use` | boolean | `true` | `true`: all samples of a frame get the device time. `false`: host arrival time; the counter is still recorded. |
+| `maxDriftMs` | number > 0 | `5000` | Re-anchor to the host clock when device time drifts more than this. |
+
+Device time is anchored to the host clock at the first frame, so plots stay on the wall-clock axis while keeping the device's exact spacing. The anchor resets when the counter goes backwards (reboot, wrap). The status bar shows `clock resync ×N` when that happened. The auto layout lists the counter in the table but gives it no tile or plot.
+
 ### Simulate (`source.simulate`)
 
 Used by `?demo`, the **Demo** button and tests. Without it the Demo button produces one sine signal named `demo` in CSV.
@@ -67,8 +82,9 @@ Used by `?demo`, the **Demo** button and tests. Without it the Demo button produ
 | `signals` | array of simulated signals | `[]` | Generated values (ignored when `lines` is set). |
 | `lines` | string[] | – | Replayed in a loop verbatim; use for `regex`, log-style or any non-generatable format. |
 | `echo` | boolean | `true` | Bytes sent to the device come back as `echo: <text>` lines. |
+| `responses` | `{ "<command>": string[] }` | – | Scripted replies so buttons work in Demo mode. Lines may contain `{{rand:min:max:decimals}}`. Replies arrive 300 ms after the command. |
 
-Simulated signal: `name` (**required**), `waveform` (`sine` default, `square`, `triangle`, `sawtooth`, `noise`, `counter`, `constant`), `min` (`0`), `max` (`100`), `periodMs` (`5000`; `0` = no phase), `decimals` (`2`, 0–10). `counter` yields `min + (n % (max - min + 1))`; `constant` yields `min`; `noise` is uniform in `[min, max]`.
+Simulated signal: `name` (**required**), `waveform` (`sine` default, `square`, `triangle`, `sawtooth`, `noise`, `counter`, `constant`, `millis`), `min` (`0`), `max` (`100`), `periodMs` (`5000`; `0` = no phase), `decimals` (`2`, 0–10). `counter` yields `min + (n % (max - min + 1))`; `constant` yields `min`; `millis` yields milliseconds since connect plus `min` (a fake tick counter); `noise` is uniform in `[min, max]`.
 
 ## `signals` (per-name metadata)
 
@@ -104,8 +120,11 @@ Array of `{ "value": number, "color": "<css>" }`. Steps are sorted by `value`; t
 |---|---|---|---|
 | **`signals`** | string[] (min 1) | – | One line per signal. |
 | `timeWindowSec` | number > 0 | `options.timeWindowSec` | Seconds of history shown; x axis scrolls with `Date.now()`. |
-| `yMin`, `yMax` | number | auto | Setting either disables y auto-range for that bound. |
+| `yMin`, `yMax` | number | auto | Pins that bound; the other one still auto-ranges. |
 | `legend` | boolean | `true` | |
+| `xAxis` | `time` \| `index` | `time` | `index`: x is the sample number (#1, #2, …). Use for occasional events such as test results, which would be squeezed into a corner of a time window. |
+| `maxPoints` | int > 0 | `50` | With `xAxis: "index"`, how many latest samples are shown. |
+| `points` | boolean | `true` for `index`, else `false` | Draw a dot per sample. |
 | `w` / `h` | | `8` / `3` | |
 
 ### `value` — big number tile
@@ -126,6 +145,7 @@ Array of `{ "value": number, "color": "<css>" }`. Steps are sorted by `value`; t
 | `min`, `max` | number | `0`, `100` | Arc range; value is clamped. |
 | `decimals`, `unit` | | signal meta | |
 | `thresholds` | see above | – | Arc colour + shaded bands. |
+| `showMinMax` | boolean | `false` | Blue and orange ticks on the arc at the lowest and highest value since connect or Clear, printed below the gauge. |
 | `w` / `h` | | `3` / `2` | |
 
 ### `led` — on/off indicator
@@ -170,15 +190,17 @@ Array of `{ "value": number, "color": "<css>" }`. Steps are sorted by `value`; t
 
 | Key | Type | Default | Notes |
 |---|---|---|---|
-| **`actions`** | `[{ label, send, color? }]` (min 1) | – | `send` is text with escapes (`"\\x02"`, `"\\n"`). |
-| `lineEnding` | `"\\n"` \| `"\\r\\n"` \| `"\\r"` \| `""` | `"\\n"` | Appended to every action. |
-| `w` / `h` | | `3` / `1` | Disabled while disconnected. |
+| **`actions`** | array (min 1) of actions | – | See below. |
+| `lineEnding` | `"\\n"` \| `"\\r\\n"` \| `"\\r"` \| `""` | `"\\n"` | Appended to every `send`. |
+| `w` / `h` | | `3` / `1` | |
+
+Action fields: **`label`**; `send` (text to the device, escapes like `"\\x02"` allowed); `local` (handled by the page: `clearData` empties plots, gauges, min/max and stats; `resetDevice` pulses DTR/RTS; `recordStart` / `recordStop` control in-memory recording); `color`; `confirm` (question shown before running). Each action needs `send` or `local`; with both, `local` runs first. Buttons with `send` are disabled while disconnected; local-only buttons always work.
 
 ## Layout rules
 
 - CSS grid: `repeat(options.columns, 1fr)`, `grid-auto-flow: dense`, 10 px gap, rows of `--row` (90 px).
 - Each widget spans `w` columns × `h` rows; with `x`/`y` it is placed at `grid-column: x+1 / span w`, `grid-row: y+1 / span h`. Mixing pinned and flowing widgets is allowed; dense flow fills gaps.
-- Under 760 px wide the grid collapses to one column and every widget spans the full width (heights are kept).
+- Under 760 px wide the grid collapses to one column and every widget spans the full width (heights are kept). If every widget has `y`, they are stacked in reading order (by `y`, then `x`).
 - Keep `w` <= `options.columns` (raise `columns`, max 24, for denser layouts); a larger span creates implicit columns that overflow the page.
 
 ## Minimal example

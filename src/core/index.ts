@@ -6,3 +6,4 @@ export * from './framing';
 export * from './parsers';
 export * from './store';
 export * from './logger';
+export * from './clock';

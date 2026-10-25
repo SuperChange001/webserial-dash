@@ -25,9 +25,11 @@ export function createWidgetContext(session: Session, dashboard: Dashboard): Wid
     },
     format: (s, value, opts) => {
       const m = meta(s);
-      const decimals = opts?.decimals ?? m?.decimals ?? (Number.isInteger(value) ? 0 : 2);
+      const decimals = opts?.decimals ?? m?.decimals;
       const unit = opts?.unit ?? m?.unit ?? '';
-      return `${value.toFixed(decimals)}${unit ? ` ${unit}` : ''}`;
+      // Undeclared signals: show what the device sent, capped at 3 decimals.
+      const text = decimals === undefined ? String(Math.round(value * 1000) / 1000) : value.toFixed(decimals);
+      return `${text}${unit ? ` ${unit}` : ''}`;
     },
   };
 }

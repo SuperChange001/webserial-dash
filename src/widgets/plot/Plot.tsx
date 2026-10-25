@@ -14,6 +14,8 @@ export function PlotWidget({ config, ctx }: WidgetProps<WidgetConfigOf<'plot'>>)
   useEffect(() => {
     const host = hostRef.current;
     if (!host || size.width === 0) return;
+    const indexMode = config.xAxis === 'index';
+    const showPoints = config.points ?? indexMode;
     const opts: uPlot.Options = {
       width: size.width,
       height: Math.max(80, size.height),
@@ -22,11 +24,24 @@ export function PlotWidget({ config, ctx }: WidgetProps<WidgetConfigOf<'plot'>>)
       cursor: { drag: { x: false, y: false } },
       legend: { show: config.legend },
       scales: {
-        x: { time: true },
-        y: { auto: config.yMin === undefined && config.yMax === undefined, range: config.yMin !== undefined || config.yMax !== undefined ? (_u, min, max) => [config.yMin ?? min, config.yMax ?? max] : undefined },
+        x: indexMode ? { time: false, range: (_u, min, max) => [Math.min(0.5, min), Math.max(max + 0.5, 5.5)] } : { time: true },
+        // Keep auto-ranging on and pin only the bounds that are configured (yMin alone is common).
+        y: {
+          auto: true,
+          range: (_u, min, max) => {
+            const lo = config.yMin ?? min;
+            const hi = config.yMax ?? max;
+            return lo === hi ? [lo - 1, hi + 1] : [lo, hi];
+          },
+        },
       },
       axes: [
-        { stroke: '#94a3b8', grid: { stroke: '#1e293b' }, ticks: { stroke: '#1e293b' } },
+        {
+          stroke: '#94a3b8',
+          grid: { stroke: '#1e293b' },
+          ticks: { stroke: '#1e293b' },
+          ...(indexMode ? { incrs: [1, 2, 5, 10, 20, 50], values: (_u: uPlot, v: number[]) => v.map((x) => `#${x}`) } : {}),
+        },
         { stroke: '#94a3b8', grid: { stroke: '#1e293b' }, ticks: { stroke: '#1e293b' }, size: 56 },
       ],
       series: [
@@ -36,6 +51,7 @@ export function PlotWidget({ config, ctx }: WidgetProps<WidgetConfigOf<'plot'>>)
           stroke: ctx.color(s),
           width: 1.5,
           spanGaps: true,
+          points: { show: showPoints, size: 6, fill: ctx.color(s) },
           value: (_u: uPlot, v: number | null) => (v == null ? '—' : ctx.format(s, v)),
         })),
       ],
@@ -46,14 +62,23 @@ export function PlotWidget({ config, ctx }: WidgetProps<WidgetConfigOf<'plot'>>)
     const store = () => ctx.session.store;
     const render = () => {
       const now = Date.now();
-      const since = now - windowSec * 1000;
-      const tables = config.signals.map((s) => {
-        const { t, v } = store().series(s, since);
-        return [Array.from(t), Array.from(v)] as uPlot.AlignedData;
-      });
-      const joined = tables.length === 1 ? tables[0]! : uPlot.join(tables);
-      u.setData(joined, false);
-      u.setScale('x', { min: since, max: now });
+      if (indexMode) {
+        // Align series at their newest sample; x = 1..n.
+        const cols = config.signals.map((sig) => Array.from(store().series(sig).v).slice(-config.maxPoints));
+        const n = Math.max(1, ...cols.map((c) => c.length));
+        const x = Array.from({ length: n }, (_, i) => i + 1);
+        const ys = cols.map((c) => [...Array<null>(n - c.length).fill(null), ...c]);
+        u.setData([x, ...ys] as uPlot.AlignedData, true);
+      } else {
+        const since = now - windowSec * 1000;
+        const tables = config.signals.map((sig) => {
+          const { t, v } = store().series(sig, since);
+          return [Array.from(t), Array.from(v)] as uPlot.AlignedData;
+        });
+        const joined = tables.length === 1 ? tables[0]! : uPlot.join(tables);
+        u.setData(joined, false);
+        u.setScale('x', { min: since, max: now });
+      }
       raf = requestAnimationFrame(render);
     };
     raf = requestAnimationFrame(render);

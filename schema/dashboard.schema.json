@@ -16,6 +16,11 @@
       "type": "string",
       "minLength": 1
     },
+    "order": {
+      "default": 100,
+      "description": "Sort position in the dashboard picker (lower first).",
+      "type": "number"
+    },
     "description": {
       "type": "string"
     },
@@ -347,6 +352,37 @@
             }
           ]
         },
+        "timestamp": {
+          "type": "object",
+          "properties": {
+            "field": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Signal that carries the device tick counter, e.g. \"ticks\" from \"ticks=12345 temp=21.5\"."
+            },
+            "ticksPerSecond": {
+              "default": 1000,
+              "description": "1000 for millis(), 1000000 for micros() / esp_timer_get_time().",
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "use": {
+              "default": true,
+              "description": "true: time samples by the device clock. false: keep host arrival time; the field is still recorded like any other signal.",
+              "type": "boolean"
+            },
+            "maxDriftMs": {
+              "default": 5000,
+              "description": "Re-anchor to the host clock when device time drifts further than this.",
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          "required": [
+            "field"
+          ],
+          "description": "Optional device timestamp. Firmware may always send ticks; this decides whether the dashboard uses them."
+        },
         "simulate": {
           "type": "object",
           "properties": {
@@ -382,6 +418,7 @@
                   },
                   "waveform": {
                     "default": "sine",
+                    "description": "\"millis\" emits milliseconds since connect (+min), like Arduino millis().",
                     "type": "string",
                     "enum": [
                       "sine",
@@ -390,7 +427,8 @@
                       "sawtooth",
                       "noise",
                       "counter",
-                      "constant"
+                      "constant",
+                      "millis"
                     ]
                   },
                   "min": {
@@ -429,6 +467,19 @@
               "default": true,
               "description": "Echo bytes sent to the simulated device back as \"echo: …\" lines.",
               "type": "boolean"
+            },
+            "responses": {
+              "description": "Scripted replies so command buttons work in Demo mode, keyed by the command text. Placeholder {{rand:min:max:decimals}} gives a random number.",
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
             }
           },
           "description": "Fake device used by Demo mode and tests so the dashboard works without hardware."
@@ -542,6 +593,26 @@
               },
               "legend": {
                 "default": true,
+                "type": "boolean"
+              },
+              "xAxis": {
+                "default": "time",
+                "description": "\"time\": scrolling time window. \"index\": one x step per sample (#1, #2, …), for occasional events like test results.",
+                "type": "string",
+                "enum": [
+                  "time",
+                  "index"
+                ]
+              },
+              "maxPoints": {
+                "default": 50,
+                "description": "With xAxis \"index\": how many most recent samples to show.",
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "points": {
+                "description": "Draw a dot per sample. Defaults to true for xAxis \"index\".",
                 "type": "boolean"
               }
             },
@@ -676,10 +747,12 @@
               },
               "min": {
                 "default": 0,
+                "description": "Left end of the arc.",
                 "type": "number"
               },
               "max": {
                 "default": 100,
+                "description": "Right end of the arc.",
                 "type": "number"
               },
               "decimals": {
@@ -709,6 +782,11 @@
                   ]
                 },
                 "description": "Colour steps: the step with the highest value <= current value wins."
+              },
+              "showMinMax": {
+                "default": false,
+                "description": "Mark the lowest and highest value seen since connect/Clear on the arc and print them below.",
+                "type": "boolean"
               }
             },
             "required": [
@@ -1055,22 +1133,37 @@
                       "type": "string"
                     },
                     "send": {
+                      "description": "Text to transmit to the device; escapes like \"\\n\" or \"\\x02\" are interpreted.",
+                      "type": "string"
+                    },
+                    "local": {
+                      "description": "Action handled by the dashboard itself: clearData (empty plots, stats, min/max), resetDevice (DTR/RTS pulse), recordStart/recordStop (in-memory recording).",
                       "type": "string",
-                      "description": "Text to transmit; escapes like \"\\n\" or \"\\x02\" are interpreted."
+                      "enum": [
+                        "clearData",
+                        "resetDevice",
+                        "recordStart",
+                        "recordStop"
+                      ]
                     },
                     "color": {
+                      "description": "CSS background colour.",
+                      "type": "string"
+                    },
+                    "confirm": {
+                      "description": "If set, ask this question before running the action.",
                       "type": "string"
                     }
                   },
                   "required": [
-                    "label",
-                    "send"
+                    "label"
                   ]
-                }
+                },
+                "description": "Buttons; each sends text, runs a local action, or both (local first)."
               },
               "lineEnding": {
                 "default": "\\n",
-                "description": "Appended to every action.",
+                "description": "Appended to every \"send\".",
                 "type": "string",
                 "enum": [
                   "\\n",

@@ -29,6 +29,7 @@ for (const file of readdirSync(dir).filter((f) => f.endsWith('.json')).sort()) {
   ids.add(d.id);
   if (file !== `${d.id}.json`) warnings.push(`file name should be ${d.id}.json`);
   const declared = new Set([...Object.keys(d.signals), ...(d.source.simulate?.signals.map((s) => s.name) ?? [])]);
+  if (d.source.timestamp) declared.add(d.source.timestamp.field);
   if (d.source.parser.type === 'csv') d.source.parser.fields.forEach((f) => f && declared.add(f));
   if (d.source.parser.type === 'binary') d.source.parser.fields.forEach((f) => f && declared.add(f));
   if (d.source.parser.type === 'regex') for (const m of d.source.parser.pattern.matchAll(/\(\?<(\w+)>/g)) declared.add(m[1]!);

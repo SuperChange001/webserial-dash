@@ -52,9 +52,11 @@ main { flex: 1; padding: 12px; }
 /* widgets */
 .w-value { height: 100%; display: flex; align-items: center; justify-content: center; padding: 4px 10px; }
 .w-value__number { font-size: clamp(20px, 4.5vmin, 40px); font-weight: 600; font-variant-numeric: tabular-nums; }
-.w-gauge { height: 100%; display: flex; align-items: center; justify-content: center; padding: 6px; }
+.w-gauge { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px; }
+.w-gauge__svg { min-height: 0; flex: 1; }
+.w-gauge__minmax { display: flex; gap: 14px; font-variant-numeric: tabular-nums; }
 .w-gauge__svg { height: 100%; max-width: 100%; }
-.w-gauge__value { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.w-gauge__value { font-size: 10px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .w-led { height: 100%; display: flex; align-items: center; justify-content: center; gap: 12px; }
 .w-led__dot { width: 22px; height: 22px; border-radius: 50%; transition: background 120ms; }
 .w-led__label { font-weight: 600; letter-spacing: 0.05em; }
@@ -81,7 +83,7 @@ main { flex: 1; padding: 12px; }
 @media (max-width: 760px) {
   :root { --row: 80px; }
   .grid { grid-template-columns: 1fr; }
-  .widget { grid-column: auto / span 1 !important; }
+  .widget { grid-column: auto / span 1 !important; grid-row: auto / span var(--h, 2) !important; }
   .description { display: none; }
   main { padding: 8px; }
   .statusbar { position: static; gap: 8px; }

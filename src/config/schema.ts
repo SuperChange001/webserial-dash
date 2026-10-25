@@ -31,7 +31,10 @@ export const framingSchema = z
 
 export const simulatedSignalSchema = z.object({
   name: z.string(),
-  waveform: z.enum(['sine', 'square', 'triangle', 'sawtooth', 'noise', 'counter', 'constant']).default('sine'),
+  waveform: z
+    .enum(['sine', 'square', 'triangle', 'sawtooth', 'noise', 'counter', 'constant', 'millis'])
+    .default('sine')
+    .describe('"millis" emits milliseconds since connect (+min), like Arduino millis().'),
   min: z.number().default(0),
   max: z.number().default(100),
   periodMs: z.number().nonnegative().default(5000),
@@ -46,8 +49,24 @@ export const simulateSchema = z
     signals: z.array(simulatedSignalSchema).default([]),
     lines: z.array(z.string()).optional().describe('If set, these lines are replayed in a loop instead of generating signals.'),
     echo: z.boolean().default(true).describe('Echo bytes sent to the simulated device back as "echo: …" lines.'),
+    responses: z
+      .record(z.string(), z.array(z.string()))
+      .optional()
+      .describe('Scripted replies so command buttons work in Demo mode, keyed by the command text. Placeholder {{rand:min:max:decimals}} gives a random number.'),
   })
   .describe('Fake device used by Demo mode and tests so the dashboard works without hardware.');
+
+export const timestampSchema = z
+  .object({
+    field: z.string().min(1).describe('Signal that carries the device tick counter, e.g. "ticks" from "ticks=12345 temp=21.5".'),
+    ticksPerSecond: z.number().positive().default(1000).describe('1000 for millis(), 1000000 for micros() / esp_timer_get_time().'),
+    use: z
+      .boolean()
+      .default(true)
+      .describe('true: time samples by the device clock. false: keep host arrival time; the field is still recorded like any other signal.'),
+    maxDriftMs: z.number().positive().default(5000).describe('Re-anchor to the host clock when device time drifts further than this.'),
+  })
+  .describe('Optional device timestamp. Firmware may always send ticks; this decides whether the dashboard uses them.');
 
 export const sourceSchema = z
   .object({
@@ -63,6 +82,7 @@ export const sourceSchema = z
       .describe('Optional USB VID/PID filters for the port chooser.'),
     framing: framingSchema.default({ mode: 'delimiter', delimiter: '\\n', maxLength: 4096 }),
     parser: parserSchema.default({ type: 'csv', separator: ',', fields: [], header: true }),
+    timestamp: timestampSchema.optional(),
     simulate: simulateSchema.optional(),
   })
   .describe('Serial settings plus how to turn bytes into signals.');
@@ -83,6 +103,7 @@ export const dashboardSchema = z
     $schema: z.string().optional(),
     id: z.string().regex(/^[a-z0-9-]+$/).describe('URL-safe identifier, e.g. "my-sensor".'),
     name: z.string().min(1),
+    order: z.number().default(100).describe('Sort position in the dashboard picker (lower first).'),
     description: z.string().optional(),
     source: sourceSchema.prefault({}),
     signals: z.record(z.string(), signalMetaSchema).default({}),

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { FakeSerialPort } from '@/testing/fake-serial-port';
 import { decodeText, encodeText } from '../bytes';
 import { SerialTransport } from './serial-transport';
-import { SimulatedTransport } from './simulated-transport';
+import { SimulatedTransport, expandTemplate } from './simulated-transport';
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
@@ -89,5 +89,32 @@ describe('SimulatedTransport', () => {
     tr.tick();
     await tr.close();
     expect(out).toEqual(['1\n', '2\n', '1\n']);
+  });
+});
+
+describe('SimulatedTransport responses', () => {
+  it('replies to scripted commands with expanded templates', async () => {
+    vi.useFakeTimers();
+    const tr = new SimulatedTransport({
+      intervalMs: 60_000, format: 'kv', lineEnding: '\n', echo: false, signals: [],
+      responses: { speedtest: ['down={{rand:10:20:1}} n={{rand:5:5}}'] },
+    });
+    const out: string[] = [];
+    tr.onData((c) => out.push(decodeText(c)));
+    await tr.open({ baudRate: 0 });
+    await tr.write(encodeText('speedtest\r\n'));
+    await tr.write(encodeText('unknown\n'));
+    vi.advanceTimersByTime(500);
+    await tr.close();
+    vi.useRealTimers();
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatch(/^down=1\d\.\d n=5\n$/);
+  });
+});
+
+describe('expandTemplate', () => {
+  it('replaces rand placeholders and leaves other text', () => {
+    expect(expandTemplate('a={{rand:0:10:2}} b', () => 0.5)).toBe('a=5.00 b');
+    expect(expandTemplate('x={{rand:-90:-50}}', () => 0)).toBe('x=-90');
   });
 });

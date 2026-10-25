@@ -1,0 +1,208 @@
+{
+  "$schema": "../schema/dashboard.schema.json",
+  "id": "wifi-speedtest",
+  "name": "Wi-Fi RSSI + speed test",
+  "order": 10,
+  "description": "ESP32 prints `ticks=<ms> rssi=<dBm>` every 500 ms; on `speedtest` it prints `down_mbps=… up_mbps=… ping_ms=…`. Walkthrough: docs/CUSTOMIZE.md.",
+  "source": {
+    "baudRate": 115200,
+    "parser": {
+      "type": "kv"
+    },
+    "timestamp": {
+      "field": "ticks",
+      "ticksPerSecond": 1000,
+      "use": true
+    },
+    "simulate": {
+      "intervalMs": 500,
+      "format": "kv",
+      "signals": [
+        {
+          "name": "ticks",
+          "waveform": "millis",
+          "decimals": 0
+        },
+        {
+          "name": "rssi",
+          "waveform": "noise",
+          "min": -72,
+          "max": -52,
+          "decimals": 0
+        }
+      ],
+      "responses": {
+        "speedtest": [
+          "speedtest: running",
+          "down_mbps={{rand:18:65:1}} up_mbps={{rand:4:14:1}} ping_ms={{rand:9:40:0}}"
+        ]
+      }
+    }
+  },
+  "signals": {
+    "rssi": {
+      "label": "Wi-Fi RSSI",
+      "unit": "dBm",
+      "decimals": 0,
+      "color": "#38bdf8"
+    },
+    "down_mbps": {
+      "label": "Download",
+      "unit": "Mbit/s",
+      "decimals": 1,
+      "color": "#a3e635"
+    },
+    "up_mbps": {
+      "label": "Upload",
+      "unit": "Mbit/s",
+      "decimals": 1,
+      "color": "#f97316"
+    },
+    "ping_ms": {
+      "label": "Ping",
+      "unit": "ms",
+      "decimals": 0,
+      "color": "#e879f9"
+    }
+  },
+  "widgets": [
+    {
+      "id": "rssi-gauge",
+      "type": "gauge",
+      "signal": "rssi",
+      "min": -100,
+      "max": -30,
+      "showMinMax": true,
+      "thresholds": [
+        {
+          "value": -100,
+          "color": "#ef4444"
+        },
+        {
+          "value": -75,
+          "color": "#22c55e"
+        }
+      ],
+      "x": 0,
+      "y": 0,
+      "w": 3,
+      "h": 3
+    },
+    {
+      "id": "down-gauge",
+      "type": "gauge",
+      "signal": "down_mbps",
+      "min": 0,
+      "max": 100,
+      "showMinMax": true,
+      "x": 3,
+      "y": 0,
+      "w": 3,
+      "h": 3
+    },
+    {
+      "type": "value",
+      "signal": "up_mbps",
+      "x": 6,
+      "y": 0,
+      "w": 3,
+      "h": 1
+    },
+    {
+      "type": "value",
+      "signal": "ping_ms",
+      "x": 9,
+      "y": 0,
+      "w": 3,
+      "h": 1
+    },
+    {
+      "id": "commands",
+      "type": "button",
+      "title": "Commands",
+      "actions": [
+        {
+          "label": "Start test",
+          "send": "speedtest",
+          "color": "#0284c7"
+        },
+        {
+          "label": "Clean data",
+          "local": "clearData",
+          "color": "#b91c1c",
+          "confirm": "Clear all plots, min/max and stats?"
+        }
+      ],
+      "x": 6,
+      "y": 1,
+      "w": 6,
+      "h": 2
+    },
+    {
+      "id": "rssi-plot",
+      "type": "plot",
+      "title": "RSSI (live)",
+      "signals": [
+        "rssi"
+      ],
+      "timeWindowSec": 600,
+      "yMin": -100,
+      "yMax": -30,
+      "x": 0,
+      "y": 3,
+      "w": 6,
+      "h": 3
+    },
+    {
+      "id": "speed-history",
+      "type": "plot",
+      "title": "Speed test history (one point per test)",
+      "signals": [
+        "down_mbps",
+        "up_mbps"
+      ],
+      "xAxis": "index",
+      "maxPoints": 30,
+      "yMin": 0,
+      "x": 6,
+      "y": 3,
+      "w": 6,
+      "h": 3
+    },
+    {
+      "type": "log",
+      "title": "Speed test results",
+      "filter": "speedtest|down_mbps",
+      "x": 0,
+      "y": 6,
+      "w": 6,
+      "h": 3
+    },
+    {
+      "id": "ping-history",
+      "type": "plot",
+      "title": "Ping history (one point per test)",
+      "signals": [
+        "ping_ms"
+      ],
+      "xAxis": "index",
+      "maxPoints": 30,
+      "yMin": 0,
+      "x": 6,
+      "y": 6,
+      "w": 6,
+      "h": 3
+    },
+    {
+      "type": "terminal",
+      "x": 0,
+      "y": 9,
+      "w": 12,
+      "h": 3
+    }
+  ],
+  "options": {
+    "bufferSamples": 20000,
+    "timeWindowSec": 120
+  }
+}

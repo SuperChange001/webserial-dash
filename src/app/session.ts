@@ -1,5 +1,6 @@
 import { Emitter } from '@/core/emitter';
 import { encodeText, unescapeString } from '@/core/bytes';
+import { DeviceClock } from '@/core/clock';
 import { createFramer, type Framer } from '@/core/framing';
 import { SessionLogger } from '@/core/logger';
 import { createParser, type Parser } from '@/core/parsers';
@@ -26,6 +27,8 @@ export interface SessionCounters {
   txBytes: number;
   frames: number;
   samples: number;
+  /** Device-clock re-anchors (reboots, counter wraps, drift). */
+  clockResyncs: number;
 }
 
 /**
@@ -38,7 +41,7 @@ export class Session {
   transport: Transport | null = null;
   status: TransportStatus = 'closed';
   error: Error | null = null;
-  counters: SessionCounters = { rxBytes: 0, txBytes: 0, frames: 0, samples: 0 };
+  counters: SessionCounters = { rxBytes: 0, txBytes: 0, frames: 0, samples: 0, clockResyncs: 0 };
   signals: OutputSignals = { dataTerminalReady: true, requestToSend: true };
 
   readonly raw = new Emitter<RawEvent>();
@@ -48,6 +51,9 @@ export class Session {
 
   private framer: Framer;
   private parser: Parser;
+  private clock: DeviceClock | null = null;
+  /** Last device-clock frame time; buffers assume non-decreasing time per signal. */
+  private lastClockT = -Infinity;
   private unsubs: Unsubscribe[] = [];
   private decoder = new TextDecoder('utf-8', { fatal: false });
   /** Recent RX bytes so late-mounting views (lazy-loaded terminal) can catch up. */
@@ -61,16 +67,32 @@ export class Session {
     this.framer = createFramer(dashboard.source.framing);
     this.parser = createParser(dashboard.source.parser);
     this.buildScaleCache();
+    this.buildClock();
   }
 
-  /** Swap dashboards. Keeps the connection; resets buffers because signal names may change. */
+  /**
+   * Swap dashboards. Keeps the connection. If only presentation changed (same id, same
+   * source/signals/buffer size, e.g. an edited JSON re-imported) the data is kept so the
+   * new layout shows immediately; otherwise buffers reset because signal names may change.
+   */
   setDashboard(dashboard: Dashboard): void {
+    const prev = this.dashboard;
+    const sameData =
+      prev.id === dashboard.id &&
+      prev.options.bufferSamples === dashboard.options.bufferSamples &&
+      JSON.stringify(prev.source) === JSON.stringify(dashboard.source) &&
+      JSON.stringify(prev.signals) === JSON.stringify(dashboard.signals);
     this.dashboard = dashboard;
+    if (sameData) {
+      this.changed.emit();
+      return;
+    }
     this.store = new SignalStore(dashboard.options.bufferSamples);
     this.framer = createFramer(dashboard.source.framing);
     this.parser = createParser(dashboard.source.parser);
     this.buildScaleCache();
-    this.counters = { rxBytes: 0, txBytes: 0, frames: 0, samples: 0 };
+    this.buildClock();
+    this.counters = { rxBytes: 0, txBytes: 0, frames: 0, samples: 0, clockResyncs: 0 };
     this.logger.clear();
     this.recent = [];
     this.recentBytes = 0;
@@ -80,6 +102,11 @@ export class Session {
   /** Bytes received recently (oldest first), capped at RECENT_LIMIT. */
   recentRx(): readonly Uint8Array[] {
     return this.recent;
+  }
+
+  private buildClock() {
+    const ts = this.dashboard.source.timestamp;
+    this.clock = ts?.use ? new DeviceClock({ ticksPerSecond: ts.ticksPerSecond, maxDriftMs: ts.maxDriftMs }) : null;
   }
 
   private buildScaleCache() {
@@ -99,6 +126,8 @@ export class Session {
     this.error = null;
     this.framer.reset();
     this.parser.reset?.();
+    this.clock?.reset();
+    this.lastClockT = -Infinity;
     this.unsubs.push(transport.onData((chunk) => this.handleData(chunk)));
     this.unsubs.push(transport.onStatus((e) => this.handleStatus(e)));
     const src = this.dashboard.source;
@@ -157,6 +186,17 @@ export class Session {
       } catch {
         samples = [];
       }
+      let frameT = t;
+      if (this.clock && samples.length) {
+        const field = this.dashboard.source.timestamp!.field;
+        const tick = samples.find((s) => s.name === field);
+        if (tick) {
+          frameT = Math.max(this.clock.map(tick.value, t), this.lastClockT);
+          this.lastClockT = frameT;
+          for (const s of samples) s.t = frameT;
+          this.counters.clockResyncs = this.clock.resyncs;
+        }
+      }
       if (this.scaleCache.size) {
         for (const s of samples) {
           const k = this.scaleCache.get(s.name);
@@ -166,7 +206,7 @@ export class Session {
       this.counters.frames++;
       for (const s of samples) batch.push(s);
       this.logger.addSamples(samples);
-      if (this.frame.size) this.frame.emit({ text: this.decoder.decode(f), bytes: f, t, samples });
+      if (this.frame.size) this.frame.emit({ text: this.decoder.decode(f), bytes: f, t: frameT, samples });
     }
     if (batch.length) {
       this.counters.samples += batch.length;
@@ -207,7 +247,7 @@ export class Session {
     this.logger.clear();
     this.recent = [];
     this.recentBytes = 0;
-    this.counters = { rxBytes: 0, txBytes: 0, frames: 0, samples: 0 };
+    this.counters = { rxBytes: 0, txBytes: 0, frames: 0, samples: 0, clockResyncs: 0 };
     this.changed.emit();
   }
 }

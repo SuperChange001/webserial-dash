@@ -13,7 +13,7 @@ export const builtinDashboards: Dashboard[] = Object.entries(modules)
     return r.data;
   })
   .filter((d): d is Dashboard => d !== null)
-  .sort((a, b) => a.name.localeCompare(b.name));
+  .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
 
 const USER_KEY = 'wsd.userDashboards';
 const LAST_KEY = 'wsd.lastDashboard';

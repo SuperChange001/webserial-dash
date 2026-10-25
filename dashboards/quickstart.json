@@ -1,0 +1,24 @@
+{
+  "$schema": "../schema/dashboard.schema.json",
+  "id": "quickstart",
+  "name": "Quick start: key=value (auto layout)",
+  "order": 0,
+  "description": "Firmware prints `ticks=<millis> temp=21.5 hum=40 ...` lines. Every name it sends becomes a signal and gets a tile and a plot line automatically; no widget config needed. Flash firmware/arduino/quickstart_kv.",
+  "source": {
+    "baudRate": 115200,
+    "parser": { "type": "kv" },
+    "timestamp": { "field": "ticks", "ticksPerSecond": 1000, "use": true },
+    "simulate": {
+      "intervalMs": 100,
+      "format": "kv",
+      "signals": [
+        { "name": "ticks", "waveform": "millis", "decimals": 0 },
+        { "name": "temp", "waveform": "sine", "min": 20, "max": 30, "periodMs": 20000, "decimals": 1 },
+        { "name": "hum", "waveform": "triangle", "min": 35, "max": 55, "periodMs": 15000, "decimals": 0 },
+        { "name": "light", "waveform": "noise", "min": 400, "max": 450, "periodMs": 0, "decimals": 0 }
+      ]
+    }
+  },
+  "signals": {},
+  "widgets": []
+}

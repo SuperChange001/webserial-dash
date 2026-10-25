@@ -32,6 +32,8 @@ Swap `esp32:esp32:esp32` for `arduino:avr:uno`, `rp2040:rp2040:rpipico`, etc.
 
 **ESP-IDF (`idf.py`)** — from `firmware/esp-idf/csv_sensor`:
 
+Requires ESP-IDF v5.3 or newer (uses the `esp_driver_uart` component). Tested on ESP-IDF v6.1 with an Adafruit ESP32 Feather (CP2104).
+
 ```sh
 idf.py set-target esp32        # or esp32s3, esp32c3, ...
 idf.py build flash             # add -p /dev/ttyUSB0 if auto-detect fails

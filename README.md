@@ -8,14 +8,14 @@ Built to be extended by agents: config first, explicit registries, one `pnpm che
 
 ## Try it
 
-Live demo (simulated device, no hardware needed): **https://OWNER.github.io/REPO/?dashboard=demo-sensor&demo**
+Live demo (simulated device, no hardware needed): **https://SuperChange001.github.io/webserial-dash/?dashboard=demo-sensor&demo**
 
-Other examples: [`?dashboard=teleplot&demo`](https://OWNER.github.io/REPO/?dashboard=teleplot&demo) · [`?dashboard=esp-log&demo`](https://OWNER.github.io/REPO/?dashboard=esp-log&demo). Drop `&demo`, click **Connect** and pick a port to use your own board.
+Other examples: [`?dashboard=teleplot&demo`](https://SuperChange001.github.io/webserial-dash/?dashboard=teleplot&demo) · [`?dashboard=esp-log&demo`](https://SuperChange001.github.io/webserial-dash/?dashboard=esp-log&demo). Drop `&demo`, click **Connect** and pick a port to use your own board.
 
 ## Quick start
 
 ```sh
-git clone https://github.com/OWNER/REPO.git
+git clone https://github.com/SuperChange001/webserial-dash.git
 cd REPO
 pnpm install
 pnpm dev          # http://localhost:5173/?dashboard=demo-sensor&demo

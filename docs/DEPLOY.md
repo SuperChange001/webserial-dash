@@ -16,7 +16,7 @@ One-time setup:
 
 1. **Settings → Pages → Build and deployment → Source: GitHub Actions** (not "Deploy from a branch"). Without this the deploy job fails with a 404 from the Pages API.
 2. Push to `main`. The site appears at `https://<owner>.github.io/<repo>/`. Share dashboards with `?dashboard=<id>` and add `&demo` to auto-start the simulated device.
-3. `pnpm build` runs `gen:schema` first, so `schema/dashboard.schema.json` is always current in the deployed tree. Point exported dashboards' `$schema` at the raw GitHub URL of that file (replace `OWNER/REPO` in `src/config/dashboards.ts` `exportDashboardJson`).
+3. `pnpm build` runs `gen:schema` first, so `schema/dashboard.schema.json` is always current in the deployed tree. Exported dashboards carry `$schema: ../schema/dashboard.schema.json`, which resolves when the file is saved into `dashboards/`.
 
 Deploying from a fork or a renamed repo needs no change: `BASE_PATH` is derived from `github.event.repository.name`.
 

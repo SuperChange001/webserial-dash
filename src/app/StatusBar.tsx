@@ -39,6 +39,9 @@ export function StatusBar({ session }: { session: Session }) {
       <span>{rate.fps.toFixed(0)} frames/s</span>
       <span data-testid="signal-count">{session.store.names().length} signals</span>
       <span className="spacer" />
+      <span className="muted" title={`Build ${__APP_VERSION__} from ${__BUILD_DATE__}`} data-testid="app-version">
+        v{__APP_VERSION__}
+      </span>
       {session.counters.clockResyncs > 0 && <span title="Device clock re-anchored (reboot, wrap or drift)">clock resync ×{session.counters.clockResyncs}</span>}
       <span className={fileLog.active ? 'rec rec--on' : 'rec'} data-testid="file-log-status" title={fileLog.folderName}>
         {fileLog.active ? `● FILE ${fl?.currentFile ?? ''} · ${fl?.rows.toLocaleString()} rows · ${fmtBytes(fl?.bytes ?? 0)}` : fl ? `file log: ${fl.parts} part(s), ${fl.rows.toLocaleString()} rows` : ''}

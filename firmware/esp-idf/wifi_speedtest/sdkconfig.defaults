@@ -1,0 +1,6 @@
+# Wi-Fi + TLS do not fit the default 1 MB app partition.
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+CONFIG_PARTITION_TABLE_SINGLE_APP_LARGE=y
+# Trusted root certificates for https://speed.cloudflare.com
+CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=y
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=6144

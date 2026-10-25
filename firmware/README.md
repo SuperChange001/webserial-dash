@@ -9,6 +9,7 @@ pick the port, and click **Connect**. All examples use **115200 baud**.
 | --- | --- | --- | --- |
 | [`arduino/quickstart_kv/quickstart_kv.ino`](arduino/quickstart_kv/quickstart_kv.ino) | `quickstart` | `?dashboard=quickstart` | **Start here.** `ticks=… temp=… hum=… light=…` at 10 Hz; the dashboard lays itself out from the names |
 | [`esp-idf/quickstart_kv/`](esp-idf/quickstart_kv) | `quickstart` | `?dashboard=quickstart` | Same idea in ESP-IDF; tested on an ESP32 Feather (CP2104) |
+| [`esp-idf/wifi_speedtest/`](esp-idf/wifi_speedtest) | `wifi-speedtest` | `?dashboard=wifi-speedtest` | Same protocol in ESP-IDF; no credentials in code: send `wifi <ssid> <password>` once (saved in flash). Tested on an ESP32 Feather. |
 | [`arduino/wifi_speedtest/wifi_speedtest.ino`](arduino/wifi_speedtest/wifi_speedtest.ino) | `wifi-speedtest` | `?dashboard=wifi-speedtest` | `ticks=… rssi=…` every 500 ms; on `speedtest` prints `down_mbps=… up_mbps=… ping_ms=…`. Set SSID/password first. Not yet compiled or run by the maintainers. |
 | [`arduino/csv_sensor/csv_sensor.ino`](arduino/csv_sensor/csv_sensor.ino) | `demo-sensor` | `?dashboard=demo-sensor` | `temp,hum,vbat,fan` CSV at 10 Hz; answers `fan 1`, `fan 0`, `status` |
 | [`esp-idf/csv_sensor/`](esp-idf/csv_sensor) | `demo-sensor` | `?dashboard=demo-sensor` | Same protocol, native ESP-IDF (`printf` on the console UART) |

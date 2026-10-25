@@ -203,9 +203,16 @@ On a phone the same file renders as a single column in reading order:
 
 ## Step 6: connect the real board
 
-1. Flash [firmware/arduino/wifi_speedtest](../firmware/arduino/wifi_speedtest/wifi_speedtest.ino) after setting your Wi-Fi name and password. This sketch has not been compiled or run by the maintainers yet; please report problems.
+1. Flash the firmware. Two versions exist:
+   - [firmware/esp-idf/wifi_speedtest](../firmware/esp-idf/wifi_speedtest/main/main.c), tested on an ESP32 Feather:
+     `idf.py set-target esp32 && idf.py -p /dev/ttyUSB0 flash`.
+   - [firmware/arduino/wifi_speedtest](../firmware/arduino/wifi_speedtest/wifi_speedtest.ino); set the Wi-Fi name and password in the sketch. Not yet compiled by the maintainers.
 2. Close any other serial monitor.
 3. Open `?dashboard=wifi-speedtest` without `&demo`, click **Connect** and pick the board.
+4. ESP-IDF version only: type `wifi <ssid> <password>` in the terminal box and press Enter. The
+   board stores the credentials in flash and connects; RSSI reads -100 until then. `status` prints
+   the connection state.
+5. Click **Start test**. A test takes a few seconds; RSSI keeps streaming meanwhile.
 
 If the board prints something slightly different, for example `RSSI: -61`, you do not need new
 firmware. Ask the agent to adapt the parser, here a `regex` parser with a named group, and keep

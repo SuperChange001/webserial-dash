@@ -40,6 +40,9 @@ jobs:
           BASE_PATH: /${{ github.event.repository.name }}/
 
       - uses: actions/configure-pages@v5
+        with:
+          # Try to enable Pages automatically; if this fails, set Settings → Pages → Source = GitHub Actions once.
+          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -50,6 +50,10 @@ export class Session {
   private parser: Parser;
   private unsubs: Unsubscribe[] = [];
   private decoder = new TextDecoder('utf-8', { fatal: false });
+  /** Recent RX bytes so late-mounting views (lazy-loaded terminal) can catch up. */
+  private recent: Uint8Array[] = [];
+  private recentBytes = 0;
+  static readonly RECENT_LIMIT = 256 * 1024;
   private scaleCache = new Map<string, { scale: number; offset: number }>();
 
   constructor(public dashboard: Dashboard) {
@@ -68,7 +72,14 @@ export class Session {
     this.buildScaleCache();
     this.counters = { rxBytes: 0, txBytes: 0, frames: 0, samples: 0 };
     this.logger.clear();
+    this.recent = [];
+    this.recentBytes = 0;
     this.changed.emit();
+  }
+
+  /** Bytes received recently (oldest first), capped at RECENT_LIMIT. */
+  recentRx(): readonly Uint8Array[] {
+    return this.recent;
   }
 
   private buildScaleCache() {
@@ -131,6 +142,9 @@ export class Session {
   private handleData(chunk: Uint8Array) {
     const t = Date.now();
     this.counters.rxBytes += chunk.length;
+    this.recent.push(chunk);
+    this.recentBytes += chunk.length;
+    while (this.recentBytes > Session.RECENT_LIMIT && this.recent.length > 1) this.recentBytes -= this.recent.shift()!.length;
     this.logger.addRaw(chunk, 'rx', t);
     this.raw.emit({ dir: 'rx', bytes: chunk, t });
     const frames = this.framer.push(chunk);
@@ -191,6 +205,8 @@ export class Session {
   clearData(): void {
     this.store.clear();
     this.logger.clear();
+    this.recent = [];
+    this.recentBytes = 0;
     this.counters = { rxBytes: 0, txBytes: 0, frames: 0, samples: 0 };
     this.changed.emit();
   }

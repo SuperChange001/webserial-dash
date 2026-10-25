@@ -6,8 +6,9 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   use: {
     baseURL: 'http://localhost:4173',
-    // Use the locally installed Chrome when present (no browser download needed).
-    channel: process.env.PW_CHANNEL ?? 'chrome',
+    // Locally: reuse the installed Google Chrome (no download). CI: Playwright's bundled Chromium.
+    // Override with PW_CHANNEL=chromium|chrome|msedge.
+    channel: process.env.PW_CHANNEL || (process.env.CI ? undefined : 'chrome'),
     trace: 'retain-on-failure',
   },
   webServer: {

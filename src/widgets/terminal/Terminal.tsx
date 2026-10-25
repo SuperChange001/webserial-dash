@@ -42,6 +42,8 @@ export function TerminalWidget({ config, ctx }: WidgetProps<WidgetConfigOf<'term
       }
     });
     ro.observe(host);
+    // Catch up on bytes that arrived before this (lazy-loaded) widget mounted.
+    for (const chunk of ctx.session.recentRx()) term.write(chunk);
     const offRaw = ctx.session.raw.on((e) => {
       if (e.dir === 'rx') term.write(e.bytes);
     });

@@ -13,7 +13,8 @@
  * (ESP32 TLS throughput is CPU bound) but fine for comparing locations and antennas.
  *
  * STATUS: written for the walkthrough in docs/CUSTOMIZE.md; not yet compiled or run on
- * hardware by the maintainers. Please report issues.
+ * hardware by the maintainers. Please report issues. The ESP-IDF version in
+ * firmware/esp-idf/wifi_speedtest is tested (about 5 Mbit/s down, 4 up on an ESP32).
  */
 #include <WiFi.h>
 #include <HTTPClient.h>

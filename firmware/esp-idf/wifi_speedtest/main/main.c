@@ -30,7 +30,7 @@
 #define PING_URL "https://speed.cloudflare.com/__down?bytes=0"
 #define UP_URL "https://speed.cloudflare.com/__up"
 #define UP_BYTES (256 * 1024)
-#define CHUNK 4096
+#define CHUNK 8192
 
 static volatile bool s_connected = false;
 static volatile bool s_test_running = false;
@@ -127,7 +127,11 @@ static esp_http_client_handle_t new_client(const char *url)
     return esp_http_client_init(&cfg);
 }
 
-/* GET url and discard the body; returns bytes read or -1. */
+/*
+ * GET url and discard the body; returns bytes read or -1. The connection is deliberately left
+ * open: the next esp_http_client_open() on the same handle reuses it (keep-alive), so only the
+ * first request pays for the TLS handshake (1-3 s on an ESP32).
+ */
 static int get_discard(esp_http_client_handle_t c, char *buf)
 {
     esp_http_client_set_method(c, HTTP_METHOD_GET);
@@ -136,7 +140,6 @@ static int get_discard(esp_http_client_handle_t c, char *buf)
     int status = esp_http_client_get_status_code(c);
     int total = 0, n;
     while ((n = esp_http_client_read(c, buf, CHUNK)) > 0) total += n;
-    esp_http_client_close(c);
     return status == 200 ? total : -1;
 }
 
@@ -149,14 +152,19 @@ static void speedtest_task(void *arg)
         goto done;
     }
 
-    /* Latency: second request on a warm TLS connection. */
+    /* Latency: best of three small requests on the warm TLS connection. */
     if (get_discard(c, buf) < 0) {
         printf("speedtest: failed cannot reach speed.cloudflare.com\n");
         goto done;
     }
-    int64_t t0 = now_ms();
-    get_discard(c, buf);
-    int ping_ms = (int)(now_ms() - t0);
+    int64_t t0;
+    int ping_ms = 1 << 30;
+    for (int i = 0; i < 3; i++) {
+        t0 = now_ms();
+        if (get_discard(c, buf) < 0) break;
+        int ms = (int)(now_ms() - t0);
+        if (ms < ping_ms) ping_ms = ms;
+    }
 
     /* Download */
     esp_http_client_set_url(c, DOWN_URL);
@@ -184,7 +192,6 @@ static void speedtest_task(void *arg)
         esp_http_client_fetch_headers(c);
         while (esp_http_client_read(c, buf, CHUNK) > 0) {
         }
-        esp_http_client_close(c);
     }
     double up_s = (now_ms() - t0) / 1000.0;
 
@@ -192,7 +199,10 @@ static void speedtest_task(void *arg)
            got * 8.0 / down_s / 1e6, sent > 0 ? sent * 8.0 / up_s / 1e6 : 0.0, ping_ms);
 
 done:
-    if (c) esp_http_client_cleanup(c);
+    if (c) {
+        esp_http_client_close(c);
+        esp_http_client_cleanup(c);
+    }
     free(buf);
     s_test_running = false;
     vTaskDelete(NULL);

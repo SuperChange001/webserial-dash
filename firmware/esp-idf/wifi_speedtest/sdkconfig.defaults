@@ -4,3 +4,13 @@ CONFIG_PARTITION_TABLE_SINGLE_APP_LARGE=y
 # Trusted root certificates for https://speed.cloudflare.com
 CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=y
 CONFIG_ESP_MAIN_TASK_STACK_SIZE=6144
+# speed.cloudflare.com sends "GTS Root R4" cross-signed by the retired "GlobalSign Root CA".
+# Without this the bundle looks only for GlobalSign Root CA and the handshake fails with
+# "No matching trusted root certificate found".
+CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_CROSS_SIGNED_VERIFY=y
+# Throughput: TLS decryption is CPU bound and the default TCP windows are small.
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+CONFIG_LWIP_TCP_SND_BUF_DEFAULT=32768
+CONFIG_LWIP_TCP_WND_DEFAULT=32768
+CONFIG_LWIP_TCP_RECVMBOX_SIZE=64
+CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM=64
